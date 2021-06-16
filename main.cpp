@@ -7,6 +7,8 @@
 #include <math.h>
 #include <cmath>
 #include <iostream>
+#include<bits/stdc++.h>
+using namespace std;
 
 #ifdef __APPLE__
 #include <GLUT/glut.h>
@@ -35,14 +37,15 @@ const int nt = 40;				//number of slices along x-direction
 const int ntheta = 20;
 bool flagg=false,flagg2=false,flagg3=false,flagg5=false,flagg6=false,flagg7=false,flagg8=false,flagg9=false,flagg10=false;
 
-
+float spot_cutoff = 40;
+bool spot_light= false;
 
 GLfloat eyeX = 0;
-GLfloat eyeY = 4;
-GLfloat eyeZ = 30;
+GLfloat eyeY = 6;
+GLfloat eyeZ = 38;
 
 GLfloat lookX = 0;
-GLfloat lookY = 4;
+GLfloat lookY = 6;
 GLfloat lookZ = 0;
 
 float rot = 0;
@@ -55,27 +58,54 @@ GLboolean l_zero=false,l_one=false;
 
 bool target_on=true,fan_on=true;
 
+
+///light 0
 GLfloat l_no[] = {0, 0, 0, 1.0};
 GLfloat l_amb[] = {0.5, 0.5, 0.5, 1.0};
 GLfloat l_dif[] = {1,1,1,1};
 GLfloat l_spec[] = {.6,.6,.6,1};
 GLfloat l_pos[] = {6.5,10,-4,1.0};
 
+
+///light 1
 GLfloat l_no1[] = {0, 0, 0, 1.0};
 GLfloat l_amb1[] = {0.3, 0.3, 0.3, 1.0};
 GLfloat l_dif1[] = {1,1,1,1};
 GLfloat l_spec1[] = {.5,.5,.5,1};
 GLfloat l_pos1[] = {-9.5,10,-4,1.0};
 
+///light 2
+GLfloat l_no2[] = {0, 0, 0, 1.0};
+GLfloat l_amb2[] = {0.3, 0.3, 0.3, 1};
+GLfloat l_dif2[] = { 1.0, 1.0, 1.0, 1.0 };
+GLfloat l_spec2[] = { 1.0, 1.0, 1.0, 1.0 };
+GLfloat l_pos2[] = {1.5,2.5,18,1.0 };
+
 float theata=0;
-float z=2.8,x=4,c=2;
+float z=2.8,x=4,c=1;
 bool flagg4=false;
 
 unsigned int ID,ID2;
 
 GLfloat ctrlpoints[L+1][3] =
 {
-   { 0.0, 0.0, 0.0},{0.1,1.5,0},{1,2.5,0},{0.9,3.0,0},{1.4,4,0},{1.9,5,0}
+    { 0.0, 0.0, 0.0},{0.1,1.4,0},{1,2.4,0},{0.8,3.0,0},{1.3,4,0},{1.8,4.5,0}
+
+};
+
+GLfloat ctrlpoints1[L+1][3] =
+{
+     { 0.0, 0.0, 0.0}, { -0.3, 0.5, 0.0},
+    { 0.1, 1.7, 0.0},{ 0.5, 1.5, 0.0},
+    {1.0, 1.5, 0.0}, {1.4, 1.4, 0.0},
+    {1.8, 0.4, 0.0},{2.2, 0.4, 0.0},
+    {2.6, 1.5, 0.0}, {3.0, 1.4, 0.0},
+    {3.4, 1.4, 0.0},{3.8, 1.4, 0.0},
+    {4.2, 1.0, 0.0},{4.6, 1.0, 0.0},
+    {5.0, 1.0, 0.0},{5.4, 1.0, 0.0},
+    {5.8, 0.5, 0.0},{6.2, 0.5, 0.0},
+    {6.6, 0.5, 0.0},{7.2, 0.2, 0.0},
+    {6.8, 0.52, 0.0}
 
 };
 float wcsClkDn[3],wcsClkUp[3];
@@ -233,6 +263,27 @@ void BezierCurve ( double t,  float xy[2])
     //return y;
 }
 
+void BezierCurve1 ( double t,  float xy[2])
+{
+    double y=0;
+    double x=0;
+    t=t>1.0?1.0:t;
+    for(int i=0; i<=L; i++)
+    {
+        int ncr=nCr(L,i);
+        double oneMinusTpow=pow(1-t,double(L-i));
+        double tPow=pow(t,double(i));
+        double coef=oneMinusTpow*tPow*ncr;
+        x+=coef*ctrlpoints1[i][0];
+        y+=coef*ctrlpoints1[i][1];
+
+    }
+    xy[0] = float(x);
+    xy[1] = float(y);
+
+    //return y;
+}
+
 void setNormal(GLfloat x1, GLfloat y1,GLfloat z1, GLfloat x2, GLfloat y2,GLfloat z2, GLfloat x3, GLfloat y3,GLfloat z3)
 {
     GLfloat Ux, Uy, Uz, Vx, Vy, Vz, Nx, Ny, Nz;
@@ -281,7 +332,78 @@ void bottleBezier()
         r1 = xy[1];
 
         //draw the surface composed of quadrilaterals by sweeping theta
-    glBegin( GL_QUAD_STRIP );
+        glBegin( GL_QUAD_STRIP );
+        ///glBegin( GL_QUADS );
+        for ( j = 0; j <= ntheta; ++j )
+        {
+            theta += dtheta;
+            double cosa = cos( theta );
+            double sina = sin ( theta );
+            y = r * cosa;
+            y1 = r1 * cosa;	//current and next y
+            z = r * sina;
+            z1 = r1 * sina;	//current and next z
+
+            //edge from point at x to point at next x
+            glVertex3f (x, y, z);
+
+            if(j>0)
+            {
+                setNormal(p1x,p1y,p1z,p2x,p2y,p2z,x, y, z);
+            }
+            else
+            {
+                p1x=x;
+                p1y=y;
+                p1z=z;
+                p2x=x1;
+                p2y=y1;
+                p2z=z1;
+
+            }
+            glVertex3f (x1, y1, z1);
+
+            //forms quad with next pair of points with incremented theta value
+        }
+        glEnd();
+        x = x1;
+        r = r1;
+    } //for i
+
+}
+
+
+///bottle
+void bottleBezier1()
+{
+    int i, j;
+    float x, y, z, r;				//current coordinates
+    float x1, y1, z1, r1;			//next coordinates
+    float theta;
+
+    const float startx = 0, endx = ctrlpoints1[L][0];
+    //number of angular slices
+    const float dx = (endx - startx) / nt;	//x step size
+    const float dtheta = 2*PI / ntheta;		//angular step size
+
+    float t=0;
+    float dt=1.0/nt;
+    float xy[2];
+    BezierCurve1( t,  xy);
+    x = xy[0];
+    r = xy[1];
+    //rotate about z-axis
+    float p1x,p1y,p1z,p2x,p2y,p2z;
+    for ( i = 0; i < nt; ++i )  			//step through x
+    {
+        theta = 0;
+        t+=dt;
+        BezierCurve1( t,  xy);
+        x1 = xy[0];
+        r1 = xy[1];
+
+        //draw the surface composed of quadrilaterals by sweeping theta
+        glBegin( GL_QUAD_STRIP );
         ///glBegin( GL_QUADS );
         for ( j = 0; j <= ntheta; ++j )
         {
@@ -376,7 +498,7 @@ static void getNormal3p(GLfloat x1, GLfloat y1, GLfloat z1,
     glNormal3f(Nx,Ny,Nz);
 }
 
-void set_mat_prop(float colR=0, float colG=1, float colB=0, bool em=false, float shine=128)
+void set_mat_prop(float colR=.3, float colG=.3, float colB=.3, bool em=false, float shine=60)
 {
     GLfloat no_mat[] = { 0.0, 0.0, 0.0, 1.0 };
     GLfloat mat_ambient[] = { colR, colG, colB, 1.0 };
@@ -419,7 +541,7 @@ void cube(float colR=.5, float colG=.5, float colB=.5,
     }
     glEnd();
 
-    }
+}
 
 
 
@@ -474,7 +596,8 @@ void animate()
     if (flagg == true)
     {
         theata-= 0.1;
-        if(theata < -180) {
+        if(theata < -180)
+        {
             theata = -180;
             flagg=false;
         }
@@ -483,7 +606,8 @@ void animate()
     if(flagg2==true)
     {
         theata+=0.1;
-        if(theata>0){
+        if(theata>0)
+        {
             theata=0;
             flagg2=false;
         }
@@ -521,9 +645,9 @@ void animate()
             x=-4;
         }
     }
-  glutPostRedisplay();
+    glutPostRedisplay();
 
-  if(flagg6==true)
+    if(flagg6==true)
     {
         x+=0.1;
         if(x>4)
@@ -532,9 +656,9 @@ void animate()
             x=4;
         }
     }
-  glutPostRedisplay();
+    glutPostRedisplay();
 
-  if(flagg7==true)
+    if(flagg7==true)
     {
 
         x+=0.1;
@@ -548,13 +672,13 @@ void animate()
         }
 
     }
-  glutPostRedisplay();
+    glutPostRedisplay();
 
-  if(flagg8==true)
+    if(flagg8==true)
     {
 
-        x-=0.1;
-        z-=0.047;
+        x-=0.01;
+        z-=0.0047;
         if(x>-4 && z>-1)
         {
             flagg8=false;
@@ -564,29 +688,29 @@ void animate()
         }
 
     }
-  glutPostRedisplay();
+    glutPostRedisplay();
 
-  if(flagg9)
-  {
-      c-=0.1;
-      if(c<-8)
-      {
-          flagg9=false;
-          c=-8;
-      }
-  }
-  glutPostRedisplay();
+    if(flagg9)
+    {
+        c-=0.1;
+        if(c<-12)
+        {
+            flagg9=false;
+            c=-12;
+        }
+    }
+    glutPostRedisplay();
 
-  if(flagg10)
-  {
-      c+=0.1;
-      if(c>2)
-      {
-          flagg10=false;
-          c=2;
-      }
-  }
-  glutPostRedisplay();
+    if(flagg10)
+    {
+        c+=0.1;
+        if(c>1)
+        {
+            flagg10=false;
+            c=1;
+        }
+    }
+    glutPostRedisplay();
 }
 void ball()
 {
@@ -599,6 +723,10 @@ void ball()
     glutSolidSphere(0.2,20,20);
     glPopMatrix();
 }
+void table_chair()
+{
+
+}
 void wall()
 {
     ///left wall
@@ -609,7 +737,7 @@ void wall()
     glPopMatrix();
 
     ///right wall
-     glPushMatrix();
+    glPushMatrix();
     glTranslated(12,0,-12);
     glScaled(.5,12,19);
     cube(0.627, 0.322, 0.176);
@@ -762,7 +890,7 @@ void build()
     cube(0.941, 0.902, 0.549);
     glPopMatrix();
 
-     glPushMatrix();
+    glPushMatrix();
     glTranslated(8,0,11);
     glScaled(.5,.5,1.5);
     cube(0.941, 0.902, 0.549);
@@ -868,7 +996,7 @@ void build()
     cube(0.941, 0.902, 0.549);
     glPopMatrix();
 
-     glPushMatrix();
+    glPushMatrix();
     glTranslated(8,0,11);
     glScaled(.5,.5,1.5);
     cube(0.941, 0.902, 0.549);
@@ -879,7 +1007,7 @@ void build()
 
     ///build 3
 
-     glPushMatrix();
+    glPushMatrix();
     glScaled(.5,.5,.5);
     glTranslated(18,0,32);
 
@@ -974,7 +1102,7 @@ void build()
     cube(0.941, 0.902, 0.549);
     glPopMatrix();
 
-     glPushMatrix();
+    glPushMatrix();
     glTranslated(8,0,11);
     glScaled(.5,.5,1.5);
     cube(0.941, 0.902, 0.549);
@@ -985,7 +1113,7 @@ void build()
 
     ///build 4
 
-     glPushMatrix();
+    glPushMatrix();
     glScaled(.5,.5,.5);
     glTranslated(18,0,20);
 
@@ -1080,7 +1208,7 @@ void build()
     cube(0.941, 0.902, 0.549);
     glPopMatrix();
 
-     glPushMatrix();
+    glPushMatrix();
     glTranslated(8,0,11);
     glScaled(.5,.5,1.5);
     cube(0.941, 0.902, 0.549);
@@ -1196,7 +1324,7 @@ void umbrella()
 {
 
 
-   set_mat_prop(0.596, 0.984, 0.596,true,60);
+    set_mat_prop(0.596, 0.984, 0.596,true,60);
 
 
     if(wired)
@@ -1215,7 +1343,7 @@ void umbrella()
 
 
 
-
+    glPushMatrix();
     glPushMatrix();
     glTranslatef(4,8,-5);
     glRotated(-90,0,0,1);
@@ -1229,6 +1357,8 @@ void umbrella()
     cube(0.333, 0.420, 0.184);
     glPopMatrix();
 
+    glPopMatrix();
+
     glPushMatrix();
     set_mat_prop(0.000, 1.000, 0.498,true,60);
     glTranslatef(0,17.5,-2);
@@ -1237,6 +1367,499 @@ void umbrella()
 
     bottleBezier();
     glPopMatrix();
+
+
+    ///food court
+    glPushMatrix();
+
+    glPushMatrix();
+    glTranslated(6,0,18);
+    glPushMatrix();
+    glTranslatef(4,8,-5);
+    glRotated(-90,0,0,1);
+    glColor3f(2,2,2);
+    bottleBezier();
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(3.5,0,-3.5);
+    glScalef(.2,7,.1);
+    cube(0.333, 0.420, 0.184);
+    glPopMatrix();
+
+    glPopMatrix();
+    ///table
+
+    glPushMatrix();
+    glTranslated(8.5,2,13.5);
+    glScaled(2,.2,2);
+    cube(0.604, 0.804, 0.196);
+
+    glPopMatrix();
+
+    ///chair
+    glPushMatrix();
+    glTranslatef(3.5,0,12);
+
+    glPushMatrix();
+    glTranslatef(6,0,3);
+    glScalef(0.07,1.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6.6,0,3);
+    glScalef(0.07,1.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6.6,0,3.6);
+    glScalef(0.07,2.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6,0,3.6);
+    glScalef(0.07,2.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(5.9,1.2,3);
+    glScalef(.8,.07,.8);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(5.8,2.2,3.6);
+    glScalef(1,1,.07);
+    cube(1.000, 1.000, 0.000);
+    glPopMatrix();
+
+
+    glPopMatrix();
+
+    ///chair 2
+
+    glPushMatrix();
+
+    glTranslatef(16,0,16);
+    glRotated(180,0,1,0);
+
+
+    glPushMatrix();
+    glTranslatef(6,0,3);
+    glScalef(0.07,1.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6.6,0,3);
+    glScalef(0.07,1.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6.6,0,3.6);
+    glScalef(0.07,2.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6,0,3.6);
+    glScalef(0.07,2.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(5.9,1.2,3);
+    glScalef(.8,.07,.8);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(5.8,2.2,3.6);
+    glScalef(1,1,.07);
+    cube(1.000, 1.000, 0.000);
+    glPopMatrix();
+
+
+    glPopMatrix();
+
+    glPopMatrix();
+
+
+     ///food court 2
+    glPushMatrix();
+    glTranslated(-16,0,0);
+    glPushMatrix();
+    set_mat_prop(0.804, 0.522, 0.247,true,60);
+    glTranslated(6,0,18);
+    glPushMatrix();
+    glTranslatef(4,8,-5);
+    glRotated(-90,0,0,1);
+    glColor3f(2,2,2);
+    bottleBezier();
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(3.5,0,-3.5);
+    glScalef(.2,7,.1);
+    cube(0.333, 0.420, 0.184);
+    glPopMatrix();
+
+    glPopMatrix();
+    ///table
+
+    glPushMatrix();
+    glTranslated(8.5,2,13.5);
+    glScaled(2,.2,2);
+    cube(0.737, 0.561, 0.561);
+
+    glPopMatrix();
+
+    ///chair
+    glPushMatrix();
+    glTranslatef(3.5,0,12);
+
+    glPushMatrix();
+    glTranslatef(6,0,3);
+    glScalef(0.07,1.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6.6,0,3);
+    glScalef(0.07,1.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6.6,0,3.6);
+    glScalef(0.07,2.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6,0,3.6);
+    glScalef(0.07,2.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(5.9,1.2,3);
+    glScalef(.8,.07,.8);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(5.8,2.2,3.6);
+    glScalef(1,1,.07);
+    cube(1.000, 1.000, 0.000);
+    glPopMatrix();
+
+
+    glPopMatrix();
+
+    ///chair 2
+
+    glPushMatrix();
+
+    glTranslatef(16,0,16);
+    glRotated(180,0,1,0);
+
+
+    glPushMatrix();
+    glTranslatef(6,0,3);
+    glScalef(0.07,1.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6.6,0,3);
+    glScalef(0.07,1.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6.6,0,3.6);
+    glScalef(0.07,2.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6,0,3.6);
+    glScalef(0.07,2.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(5.9,1.2,3);
+    glScalef(.8,.07,.8);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(5.8,2.2,3.6);
+    glScalef(1,1,.07);
+    cube(1.000, 1.000, 0.000);
+    glPopMatrix();
+
+
+    glPopMatrix();
+
+    glPopMatrix();
+
+
+    ///food court 3
+
+    glPushMatrix();
+    glTranslated(-17,0,7.5);
+    glPushMatrix();
+    set_mat_prop(0.957, 0.643, 0.376,true,60);
+    glTranslated(6,0,18);
+    glPushMatrix();
+    glTranslatef(4,8,-5);
+    glRotated(-90,0,0,1);
+    glColor3f(2,2,2);
+    bottleBezier();
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(3.5,0,-3.5);
+    glScalef(.2,7,.1);
+    cube(0.333, 0.420, 0.184);
+    glPopMatrix();
+
+    glPopMatrix();
+    ///table
+
+    glPushMatrix();
+    glTranslated(8.5,2,13.5);
+    glScaled(2,.2,2);
+    cube(0.855, 0.647, 0.125);
+
+    glPopMatrix();
+
+    ///chair
+    glPushMatrix();
+    glTranslatef(3.5,0,12);
+
+    glPushMatrix();
+    glTranslatef(6,0,3);
+    glScalef(0.07,1.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6.6,0,3);
+    glScalef(0.07,1.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6.6,0,3.6);
+    glScalef(0.07,2.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6,0,3.6);
+    glScalef(0.07,2.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(5.9,1.2,3);
+    glScalef(.8,.07,.8);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(5.8,2.2,3.6);
+    glScalef(1,1,.07);
+    cube(1.000, 1.000, 0.000);
+    glPopMatrix();
+
+
+    glPopMatrix();
+
+    ///chair 2
+
+    glPushMatrix();
+
+    glTranslatef(16,0,16);
+    glRotated(180,0,1,0);
+
+
+    glPushMatrix();
+    glTranslatef(6,0,3);
+    glScalef(0.07,1.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6.6,0,3);
+    glScalef(0.07,1.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6.6,0,3.6);
+    glScalef(0.07,2.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6,0,3.6);
+    glScalef(0.07,2.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(5.9,1.2,3);
+    glScalef(.8,.07,.8);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(5.8,2.2,3.6);
+    glScalef(1,1,.07);
+    cube(1.000, 1.000, 0.000);
+    glPopMatrix();
+
+
+    glPopMatrix();
+
+    glPopMatrix();
+
+    ///food court 4
+
+
+
+    glPushMatrix();
+    glTranslated(0,0,7.5);
+    glPushMatrix();
+    set_mat_prop(0.941, 1.000, 0.941,true,60);
+    glTranslated(6,0,18);
+    glPushMatrix();
+    glTranslatef(4,8,-5);
+    glRotated(-90,0,0,1);
+    glColor3f(2,2,2);
+    bottleBezier();
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(3.5,0,-3.5);
+    glScalef(.2,7,.1);
+    cube(0.333, 0.420, 0.184);
+    glPopMatrix();
+
+    glPopMatrix();
+    ///table
+
+    glPushMatrix();
+    glTranslated(8.5,2,13.5);
+    glScaled(2,.2,2);
+    cube(	0.467, 0.533, 0.600);
+
+    glPopMatrix();
+
+    ///chair
+    glPushMatrix();
+    glTranslatef(3.5,0,12);
+
+    glPushMatrix();
+    glTranslatef(6,0,3);
+    glScalef(0.07,1.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6.6,0,3);
+    glScalef(0.07,1.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6.6,0,3.6);
+    glScalef(0.07,2.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6,0,3.6);
+    glScalef(0.07,2.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(5.9,1.2,3);
+    glScalef(.8,.07,.8);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(5.8,2.2,3.6);
+    glScalef(1,1,.07);
+    cube(1.000, 1.000, 0.000);
+    glPopMatrix();
+
+
+    glPopMatrix();
+
+    ///chair 2
+
+    glPushMatrix();
+
+    glTranslatef(16,0,16);
+    glRotated(180,0,1,0);
+
+
+    glPushMatrix();
+    glTranslatef(6,0,3);
+    glScalef(0.07,1.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6.6,0,3);
+    glScalef(0.07,1.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6.6,0,3.6);
+    glScalef(0.07,2.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(6,0,3.6);
+    glScalef(0.07,2.2,.07);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(5.9,1.2,3);
+    glScalef(.8,.07,.8);
+    cube(0.502, 0.502, 0.000);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(5.8,2.2,3.6);
+    glScalef(1,1,.07);
+    cube(1.000, 1.000, 0.000);
+    glPopMatrix();
+
+
+    glPopMatrix();
+
+    glPopMatrix();
+
+
+
 
 
 
@@ -1305,8 +1928,8 @@ void road()
 
 void gallery(GLfloat l,GLfloat w)
 {
-     glPushMatrix();
-     glTranslatef(0,0,-1);
+    glPushMatrix();
+    glTranslatef(0,0,-1);
     glPushMatrix();
     glTranslatef(-(l/2)-0.125,0,-(w/2));
     glScalef(l,1,.8);
@@ -1354,98 +1977,98 @@ void gallery(GLfloat l,GLfloat w)
 }
 void tree()
 {
-     set_mat_prop(0,.4,0,true,60);
-
-
-
-  glPushMatrix();
-        glTranslated(-6.7,3,3.2);
-        glPushMatrix();
-
-            ///glTranslated(-6.5,3,3.5);
-            glScaled(1,0.2,1);
-            glRotated(90,1,0,0);
-
-            GLUquadricObj *quadratic;
-            quadratic=gluNewQuadric();
-            gluCylinder(quadratic,0.125,0.125,10,20,8);
-        glPopMatrix();
-
-        glPushMatrix();
-            glTranslated(0,.5,0);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
-
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    set_mat_prop(0,.4,0,true,60);
 
 
 
     glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(-45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glTranslated(-6.7,3,3.2);
+    glPushMatrix();
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+    ///glTranslated(-6.5,3,3.5);
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
+    GLUquadricObj *quadratic;
+    quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.125,0.125,10,20,8);
+    glPopMatrix();
 
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-            glPopMatrix();
-            ///
-        glPopMatrix();
-
-
-        glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
-
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-            glPopMatrix();
-            ///
-        glPopMatrix();
-        ///
+    glPopMatrix();
+    ///
     glPopMatrix();
 
 
-        ///
+
+    glPushMatrix();
+    glTranslated(0,-.5,0);
+    glRotated(-45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
+
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+
+
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
+
+    glPopMatrix();
+    ///
+    glPopMatrix();
+
+
+    glPushMatrix();
+    glTranslated(0,-.5,0);
+    glRotated(45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
+
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+
+
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
+
+    glPopMatrix();
+    ///
+    glPopMatrix();
+    ///
+    glPopMatrix();
+
+
+    ///
     glPopMatrix();
 
 
@@ -1453,466 +2076,466 @@ void tree()
     ///2nd tree
 
     glPushMatrix();
-        glTranslated(-6.7,3,-1.5);
-        glPushMatrix();
+    glTranslated(-6.7,3,-1.5);
+    glPushMatrix();
 
-            ///glTranslated(-6.5,3,3.5);
-            glScaled(1,0.2,1);
-            glRotated(90,1,0,0);
+    ///glTranslated(-6.5,3,3.5);
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-            ///GLUquadricObj *quadratic;
-           /// quadratic=gluNewQuadric();
-            gluCylinder(quadratic,0.125,0.125,10,20,8);
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    /// quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.125,0.125,10,20,8);
+    glPopMatrix();
 
-        glPushMatrix();
-            glTranslated(0,.5,0);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    glPopMatrix();
+    ///
+    glPopMatrix();
 
 
 
     glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(-45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glTranslated(0,-.5,0);
+    glRotated(-45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-        glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
-        ///
+    glPopMatrix();
+    ///
     glPopMatrix();
 
 
-        ///
+    glPushMatrix();
+    glTranslated(0,-.5,0);
+    glRotated(45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
+
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+
+
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
+
+    glPopMatrix();
+    ///
+    glPopMatrix();
+    ///
+    glPopMatrix();
+
+
+    ///
     glPopMatrix();
 
 
 ///3rd tree
 
-  glPushMatrix();
-        glTranslated(8,3,-1.5);
-        glPushMatrix();
+    glPushMatrix();
+    glTranslated(8,3,-1.5);
+    glPushMatrix();
 
-            ///glTranslated(-6.5,3,3.5);
-            glScaled(1,0.2,1);
-            glRotated(90,1,0,0);
+    ///glTranslated(-6.5,3,3.5);
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-            ///GLUquadricObj *quadratic;
-           /// quadratic=gluNewQuadric();
-            gluCylinder(quadratic,0.125,0.125,10,20,8);
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    /// quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.125,0.125,10,20,8);
+    glPopMatrix();
 
-        glPushMatrix();
-            glTranslated(0,.5,0);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    glPopMatrix();
+    ///
+    glPopMatrix();
 
 
 
     glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(-45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glTranslated(0,-.5,0);
+    glRotated(-45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-        glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
-        ///
+    glPopMatrix();
+    ///
     glPopMatrix();
 
 
-        ///
+    glPushMatrix();
+    glTranslated(0,-.5,0);
+    glRotated(45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
+
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+
+
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
+
+    glPopMatrix();
+    ///
+    glPopMatrix();
+    ///
+    glPopMatrix();
+
+
+    ///
     glPopMatrix();
 
 
 ///4th tree
 
-glPushMatrix();
-        glTranslated(8,3,1);
-        glPushMatrix();
+    glPushMatrix();
+    glTranslated(8,3,1);
+    glPushMatrix();
 
-            ///glTranslated(-6.5,3,3.5);
-            glScaled(1,0.2,1);
-            glRotated(90,1,0,0);
+    ///glTranslated(-6.5,3,3.5);
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-            ///GLUquadricObj *quadratic;
-           /// quadratic=gluNewQuadric();
-            gluCylinder(quadratic,0.125,0.125,10,20,8);
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    /// quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.125,0.125,10,20,8);
+    glPopMatrix();
 
-        glPushMatrix();
-            glTranslated(0,.5,0);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    glPopMatrix();
+    ///
+    glPopMatrix();
 
 
 
     glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(-45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glTranslated(0,-.5,0);
+    glRotated(-45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-        glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
-        ///
+    glPopMatrix();
+    ///
     glPopMatrix();
 
 
-        ///
+    glPushMatrix();
+    glTranslated(0,-.5,0);
+    glRotated(45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
+
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+
+
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
+
+    glPopMatrix();
+    ///
+    glPopMatrix();
+    ///
+    glPopMatrix();
+
+
+    ///
     glPopMatrix();
 
     ///5th tree
 
     glPushMatrix();
-        glTranslated(8,3,3);
-        glPushMatrix();
+    glTranslated(8,3,3);
+    glPushMatrix();
 
-            ///glTranslated(-6.5,3,3.5);
-            glScaled(1,0.2,1);
-            glRotated(90,1,0,0);
+    ///glTranslated(-6.5,3,3.5);
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-            ///GLUquadricObj *quadratic;
-           /// quadratic=gluNewQuadric();
-            gluCylinder(quadratic,0.125,0.125,10,20,8);
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    /// quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.125,0.125,10,20,8);
+    glPopMatrix();
 
-        glPushMatrix();
-            glTranslated(0,.5,0);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    glPopMatrix();
+    ///
+    glPopMatrix();
 
 
 
     glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(-45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glTranslated(0,-.5,0);
+    glRotated(-45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-        glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
-        ///
+    glPopMatrix();
+    ///
     glPopMatrix();
 
 
-        ///
+    glPushMatrix();
+    glTranslated(0,-.5,0);
+    glRotated(45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
+
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+
+
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
+
+    glPopMatrix();
+    ///
+    glPopMatrix();
+    ///
+    glPopMatrix();
+
+
+    ///
     glPopMatrix();
 
 
 
 
-  ///road side tree 1
+    ///road side tree 1
 
-  glPushMatrix();
-        glTranslated(-2.2,3,10);
-        glPushMatrix();
+    glPushMatrix();
+    glTranslated(-2.2,3,10);
+    glPushMatrix();
 
-            ///glTranslated(-6.5,3,3.5);
-            glScaled(1,0.2,1);
-            glRotated(90,1,0,0);
+    ///glTranslated(-6.5,3,3.5);
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-            ///GLUquadricObj *quadratic;
-           /// quadratic=gluNewQuadric();
-            gluCylinder(quadratic,0.125,0.125,10,20,8);
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    /// quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.125,0.125,10,20,8);
+    glPopMatrix();
 
-        glPushMatrix();
-            glTranslated(0,.5,0);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    glPopMatrix();
+    ///
+    glPopMatrix();
 
 
 
     glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(-45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glTranslated(0,-.5,0);
+    glRotated(-45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-        glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
-        ///
+    glPopMatrix();
+    ///
     glPopMatrix();
 
 
-        ///
+    glPushMatrix();
+    glTranslated(0,-.5,0);
+    glRotated(45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
+
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+
+
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
+
+    glPopMatrix();
+    ///
+    glPopMatrix();
+    ///
+    glPopMatrix();
+
+
+    ///
     glPopMatrix();
 
 
@@ -1920,370 +2543,370 @@ glPushMatrix();
     ///road side tree 2
 
     glPushMatrix();
-        glTranslated(-2.2,3,14);
-        glPushMatrix();
+    glTranslated(-2.2,3,14);
+    glPushMatrix();
 
-            ///glTranslated(-6.5,3,3.5);
-            glScaled(1,0.2,1);
-            glRotated(90,1,0,0);
+    ///glTranslated(-6.5,3,3.5);
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-            ///GLUquadricObj *quadratic;
-           /// quadratic=gluNewQuadric();
-            gluCylinder(quadratic,0.125,0.125,10,20,8);
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    /// quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.125,0.125,10,20,8);
+    glPopMatrix();
 
-        glPushMatrix();
-            glTranslated(0,.5,0);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    glPopMatrix();
+    ///
+    glPopMatrix();
 
 
 
     glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(-45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glTranslated(0,-.5,0);
+    glRotated(-45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-        glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
-        ///
+    glPopMatrix();
+    ///
     glPopMatrix();
 
 
-        ///
+    glPushMatrix();
+    glTranslated(0,-.5,0);
+    glRotated(45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
+
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+
+
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
+
+    glPopMatrix();
+    ///
+    glPopMatrix();
+    ///
+    glPopMatrix();
+
+
+    ///
     glPopMatrix();
 
     ///road side tree 3
 
     glPushMatrix();
-        glTranslated(-2.2,3,18);
-        glPushMatrix();
+    glTranslated(-2.2,3,18);
+    glPushMatrix();
 
-            ///glTranslated(-6.5,3,3.5);
-            glScaled(1,0.2,1);
-            glRotated(90,1,0,0);
+    ///glTranslated(-6.5,3,3.5);
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-            ///GLUquadricObj *quadratic;
-           /// quadratic=gluNewQuadric();
-            gluCylinder(quadratic,0.125,0.125,10,20,8);
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    /// quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.125,0.125,10,20,8);
+    glPopMatrix();
 
-        glPushMatrix();
-            glTranslated(0,.5,0);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    glPopMatrix();
+    ///
+    glPopMatrix();
 
 
 
     glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(-45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glTranslated(0,-.5,0);
+    glRotated(-45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-        glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
-        ///
+    glPopMatrix();
+    ///
     glPopMatrix();
 
 
-        ///
+    glPushMatrix();
+    glTranslated(0,-.5,0);
+    glRotated(45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
+
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+
+
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
+
+    glPopMatrix();
+    ///
+    glPopMatrix();
+    ///
+    glPopMatrix();
+
+
+    ///
     glPopMatrix();
 
     ///road side tree 4
 
     glPushMatrix();
-        glTranslated(-2.2,3,22);
-        glPushMatrix();
+    glTranslated(-2.2,3,22);
+    glPushMatrix();
 
-            ///glTranslated(-6.5,3,3.5);
-            glScaled(1,0.2,1);
-            glRotated(90,1,0,0);
+    ///glTranslated(-6.5,3,3.5);
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-            ///GLUquadricObj *quadratic;
-           /// quadratic=gluNewQuadric();
-            gluCylinder(quadratic,0.125,0.125,10,20,8);
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    /// quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.125,0.125,10,20,8);
+    glPopMatrix();
 
-        glPushMatrix();
-            glTranslated(0,.5,0);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    glPopMatrix();
+    ///
+    glPopMatrix();
 
 
 
     glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(-45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glTranslated(0,-.5,0);
+    glRotated(-45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-        glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
-        ///
+    glPopMatrix();
+    ///
     glPopMatrix();
 
 
-        ///
+    glPushMatrix();
+    glTranslated(0,-.5,0);
+    glRotated(45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
+
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+
+
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
+
+    glPopMatrix();
+    ///
+    glPopMatrix();
+    ///
+    glPopMatrix();
+
+
+    ///
     glPopMatrix();
 
 
     ///road side tree 5
 
     glPushMatrix();
-        glTranslated(-2.2,3,25);
-        glPushMatrix();
+    glTranslated(-2.2,3,25);
+    glPushMatrix();
 
-            ///glTranslated(-6.5,3,3.5);
-            glScaled(1,0.2,1);
-            glRotated(90,1,0,0);
+    ///glTranslated(-6.5,3,3.5);
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-            ///GLUquadricObj *quadratic;
-           /// quadratic=gluNewQuadric();
-            gluCylinder(quadratic,0.125,0.125,10,20,8);
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    /// quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.125,0.125,10,20,8);
+    glPopMatrix();
 
-        glPushMatrix();
-            glTranslated(0,.5,0);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    glPopMatrix();
+    ///
+    glPopMatrix();
 
 
 
     glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(-45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glTranslated(0,-.5,0);
+    glRotated(-45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-        glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
-        ///
+    glPopMatrix();
+    ///
     glPopMatrix();
 
 
-        ///
+    glPushMatrix();
+    glTranslated(0,-.5,0);
+    glRotated(45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
+
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+
+
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
+
+    glPopMatrix();
+    ///
+    glPopMatrix();
+    ///
+    glPopMatrix();
+
+
+    ///
     glPopMatrix();
 
 
@@ -2291,107 +2914,107 @@ glPushMatrix();
 
     ///glutSolidSphere(0.5,20,20);
 
-            glPopMatrix();
-            ///
-        glPopMatrix();
-        ///
+    glPopMatrix();
+    ///
+    glPopMatrix();
+    ///
     glPopMatrix();
 
 
-        ///
+    ///
     glPopMatrix();
 
     ///road side tree 6
 
     glPushMatrix();
-     set_mat_prop(0.000, 1.000, 0.000,true,60);
-        glTranslated(-2.2,3,25);
-        glPushMatrix();
+    set_mat_prop(0.000, 1.000, 0.000,true,60);
+    glTranslated(-2.2,3,25);
+    glPushMatrix();
 
-            ///glTranslated(-6.5,3,3.5);
-            glScaled(1,0.2,1);
-            glRotated(90,1,0,0);
+    ///glTranslated(-6.5,3,3.5);
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-            ///GLUquadricObj *quadratic;
-           /// quadratic=gluNewQuadric();
-            gluCylinder(quadratic,0.125,0.125,10,20,8);
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    /// quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.125,0.125,10,20,8);
+    glPopMatrix();
 
-        glPushMatrix();
-            glTranslated(0,.5,0);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    glPopMatrix();
+    ///
+    glPopMatrix();
 
 
 
     glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(-45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glTranslated(0,-.5,0);
+    glRotated(-45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-        glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
-        ///
+    glPopMatrix();
+    ///
     glPopMatrix();
 
 
-        ///
+    glPushMatrix();
+    glTranslated(0,-.5,0);
+    glRotated(45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
+
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+
+
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
+
+    glPopMatrix();
+    ///
+    glPopMatrix();
+    ///
+    glPopMatrix();
+
+
+    ///
     glPopMatrix();
 
     ///glPopMatrix();
@@ -2399,94 +3022,94 @@ glPushMatrix();
     ///right side tree  1
 
     glPushMatrix();
-     set_mat_prop(0.000, 1.000, 0.000,true,60);
-        glTranslated(4.2,3,22);
-        glPushMatrix();
+    set_mat_prop(0.000, 1.000, 0.000,true,60);
+    glTranslated(4.2,3,22);
+    glPushMatrix();
 
-            ///glTranslated(-6.5,3,3.5);
-            glScaled(1,0.2,1);
-            glRotated(90,1,0,0);
+    ///glTranslated(-6.5,3,3.5);
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-            ///GLUquadricObj *quadratic;
-           /// quadratic=gluNewQuadric();
-            gluCylinder(quadratic,0.125,0.125,10,20,8);
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    /// quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.125,0.125,10,20,8);
+    glPopMatrix();
 
-        glPushMatrix();
-            glTranslated(0,.5,0);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    glPopMatrix();
+    ///
+    glPopMatrix();
 
 
 
     glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(-45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glTranslated(0,-.5,0);
+    glRotated(-45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-        glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
-        ///
+    glPopMatrix();
+    ///
     glPopMatrix();
 
 
-        ///
+    glPushMatrix();
+    glTranslated(0,-.5,0);
+    glRotated(45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
+
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+
+
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
+
+    glPopMatrix();
+    ///
+    glPopMatrix();
+    ///
+    glPopMatrix();
+
+
+    ///
     glPopMatrix();
 
 
@@ -2494,94 +3117,94 @@ glPushMatrix();
     ///right side tree  2
 
     glPushMatrix();
-     set_mat_prop(0.000, 1.000, 0.000,true,60);
-        glTranslated(4.2,3,14);
-        glPushMatrix();
+    set_mat_prop(0.000, 1.000, 0.000,true,60);
+    glTranslated(4.2,3,14);
+    glPushMatrix();
 
-            ///glTranslated(-6.5,3,3.5);
-            glScaled(1,0.2,1);
-            glRotated(90,1,0,0);
+    ///glTranslated(-6.5,3,3.5);
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-            ///GLUquadricObj *quadratic;
-           /// quadratic=gluNewQuadric();
-            gluCylinder(quadratic,0.125,0.125,10,20,8);
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    /// quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.125,0.125,10,20,8);
+    glPopMatrix();
 
-        glPushMatrix();
-            glTranslated(0,.5,0);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    glPopMatrix();
+    ///
+    glPopMatrix();
 
 
 
     glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(-45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glTranslated(0,-.5,0);
+    glRotated(-45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-        glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
-        ///
+    glPopMatrix();
+    ///
     glPopMatrix();
 
 
-        ///
+    glPushMatrix();
+    glTranslated(0,-.5,0);
+    glRotated(45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
+
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+
+
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
+
+    glPopMatrix();
+    ///
+    glPopMatrix();
+    ///
+    glPopMatrix();
+
+
+    ///
     glPopMatrix();
 
 
@@ -2589,187 +3212,187 @@ glPushMatrix();
     ///right side tree  3
 
     glPushMatrix();
-        glTranslated(4.2,3,18);
-        glPushMatrix();
+    glTranslated(4.2,3,18);
+    glPushMatrix();
 
-            ///glTranslated(-6.5,3,3.5);
-            glScaled(1,0.2,1);
-            glRotated(90,1,0,0);
+    ///glTranslated(-6.5,3,3.5);
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-            ///GLUquadricObj *quadratic;
-           /// quadratic=gluNewQuadric();
-            gluCylinder(quadratic,0.125,0.125,10,20,8);
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    /// quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.125,0.125,10,20,8);
+    glPopMatrix();
 
-        glPushMatrix();
-            glTranslated(0,.5,0);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    glPopMatrix();
+    ///
+    glPopMatrix();
 
 
 
     glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(-45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glTranslated(0,-.5,0);
+    glRotated(-45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-        glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
-        ///
+    glPopMatrix();
+    ///
     glPopMatrix();
 
 
-        ///
+    glPushMatrix();
+    glTranslated(0,-.5,0);
+    glRotated(45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
+
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+
+
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
+
+    glPopMatrix();
+    ///
+    glPopMatrix();
+    ///
+    glPopMatrix();
+
+
+    ///
     glPopMatrix();
 
 
     ///right side tree  1
 
     glPushMatrix();
-       set_mat_prop(0.000, 1.000, 0.000,true,60);
-        glTranslated(4.2,3,10);
-        glPushMatrix();
+    set_mat_prop(0.000, 1.000, 0.000,true,60);
+    glTranslated(4.2,3,10);
+    glPushMatrix();
 
-            ///glTranslated(-6.5,3,3.5);
-            glScaled(1,0.2,1);
-            glRotated(90,1,0,0);
+    ///glTranslated(-6.5,3,3.5);
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-            ///GLUquadricObj *quadratic;
-           /// quadratic=gluNewQuadric();
-            gluCylinder(quadratic,0.125,0.125,10,20,8);
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    /// quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.125,0.125,10,20,8);
+    glPopMatrix();
 
-        glPushMatrix();
-            glTranslated(0,.5,0);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    glPopMatrix();
+    ///
+    glPopMatrix();
 
 
 
     glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(-45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glTranslated(0,-.5,0);
+    glRotated(-45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-        glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
-        ///
+    glPopMatrix();
+    ///
     glPopMatrix();
 
 
-        ///
+    glPushMatrix();
+    glTranslated(0,-.5,0);
+    glRotated(45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
+
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+
+
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
+
+    glPopMatrix();
+    ///
+    glPopMatrix();
+    ///
+    glPopMatrix();
+
+
+    ///
     glPopMatrix();
 
 
@@ -2779,93 +3402,93 @@ glPushMatrix();
 
     glPushMatrix();
     set_mat_prop(0.000, 1.000, 0.000,true,60);
-        glTranslated(4.2,3,25);
-        glPushMatrix();
+    glTranslated(4.2,3,25);
+    glPushMatrix();
 
-            ///glTranslated(-6.5,3,3.5);
-            glScaled(1,0.2,1);
-            glRotated(90,1,0,0);
+    ///glTranslated(-6.5,3,3.5);
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-            ///GLUquadricObj *quadratic;
-           /// quadratic=gluNewQuadric();
-            gluCylinder(quadratic,0.125,0.125,10,20,8);
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    /// quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.125,0.125,10,20,8);
+    glPopMatrix();
 
-        glPushMatrix();
-            glTranslated(0,.5,0);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    glPopMatrix();
+    ///
+    glPopMatrix();
 
 
 
     glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(-45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glTranslated(0,-.5,0);
+    glRotated(-45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
 
 
-        glPushMatrix();
-            glTranslated(0,-.5,0);
-            glRotated(45,0,0,1);
-             ///daty
-             glPushMatrix();
-                glScaled(1,0.2,1);
-                glRotated(90,1,0,0);
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
 
-                ///GLUquadricObj *quadratic;
-                ///quadratic=gluNewQuadric();
-                gluCylinder(quadratic,0.0125,0.0125,3,20,8);
-
-
-            glPopMatrix();
-                ///leave
-            glPushMatrix();
-                glTranslated(0,.5,0);
-                glutSolidSphere(0.5,20,20);
-
-            glPopMatrix();
-            ///
-        glPopMatrix();
-        ///
+    glPopMatrix();
+    ///
     glPopMatrix();
 
 
-        ///
+    glPushMatrix();
+    glTranslated(0,-.5,0);
+    glRotated(45,0,0,1);
+    ///daty
+    glPushMatrix();
+    glScaled(1,0.2,1);
+    glRotated(90,1,0,0);
+
+    ///GLUquadricObj *quadratic;
+    ///quadratic=gluNewQuadric();
+    gluCylinder(quadratic,0.0125,0.0125,3,20,8);
+
+
+    glPopMatrix();
+    ///leave
+    glPushMatrix();
+    glTranslated(0,.5,0);
+    glutSolidSphere(0.5,20,20);
+
+    glPopMatrix();
+    ///
+    glPopMatrix();
+    ///
+    glPopMatrix();
+
+
+    ///
     glPopMatrix();
 
 
@@ -2882,20 +3505,56 @@ glPushMatrix();
 void car()
 {
     glPushMatrix();
-    glTranslated(0,0,c);
+    glTranslated(-.25,0,c);
     glPushMatrix();
     glTranslated(0,0,18);
-    glScaled(2.5,1.5,4);
+    glScaled(3,1.5,4);
     cube(0.627, 0.322, 0.176);
     glPopMatrix();
 
     glPushMatrix();
-
     glTranslated(0,1.5,18);
-    glScaled(2.5,2,1.5);
+    glScaled(3,2,1.5);
     cube(1,1,0);
     glPopMatrix();
+
+    glPushMatrix();
+    glTranslated(0,1.5,19.5);
+    glScaled(.2,1.4,2.5);
+    cube(0.000, 0.502, 0.502);
     glPopMatrix();
+
+    glPushMatrix();
+    glTranslated(2.8,1.5,19.5);
+    glScaled(.2,1.4,2.5);
+    cube(0.000, 0.502, 0.502);
+    glPopMatrix();
+
+    ///car 2
+
+
+
+
+
+
+     ///bottle
+
+    glPushMatrix();
+    set_mat_prop(1,0,0,true,60);
+    glTranslatef(1.5,1.5,21);
+    glRotated(90,0,0,1);
+    glScaled(.9,.8,1);
+
+    bottleBezier1();
+    glPopMatrix();
+
+
+    glPopMatrix();
+
+
+
+
+
 }
 
 void banner(GLfloat l,GLfloat w)
@@ -2997,61 +3656,61 @@ void lamp(GLfloat l,GLfloat w)
 }
 void player()
 {
-   /* glPushMatrix();
-    glScaled(.8,.5,1);
+    /* glPushMatrix();
+     glScaled(.8,.5,1);
 
 
-    glPushMatrix();
-    glTranslated(0,2.5,2);
-    glScaled(1.5,2,.1);
-    cube(0.545, 0.271, 0.075);
-    glPopMatrix();
+     glPushMatrix();
+     glTranslated(0,2.5,2);
+     glScaled(1.5,2,.1);
+     cube(0.545, 0.271, 0.075);
+     glPopMatrix();
 
-    glPushMatrix();
-    glTranslated(0.2,0,2);
-    glScaled(.2,2.5,.1);
-    cube(0.545, 0.271, 0.075);
-    glPopMatrix();
+     glPushMatrix();
+     glTranslated(0.2,0,2);
+     glScaled(.2,2.5,.1);
+     cube(0.545, 0.271, 0.075);
+     glPopMatrix();
 
-    glPushMatrix();
-    glTranslated(1.1,0,2);
-    glScaled(.2,2.5,.1);
-    cube(0.545, 0.271, 0.075);
-    glPopMatrix();
+     glPushMatrix();
+     glTranslated(1.1,0,2);
+     glScaled(.2,2.5,.1);
+     cube(0.545, 0.271, 0.075);
+     glPopMatrix();
 
-    glPushMatrix();
-    set_mat_prop(1,1,1,true,60);
-    glTranslated(.8,5.1,2);
-    glutSolidSphere(0.6,20,20);
-    glPopMatrix();
+     glPushMatrix();
+     set_mat_prop(1,1,1,true,60);
+     glTranslated(.8,5.1,2);
+     glutSolidSphere(0.6,20,20);
+     glPopMatrix();
 
-    glPushMatrix();
-    glTranslated(1.5,4,2);
-    glScaled(1,.3,.1);
-    cube(0.545, 0.271, 0.075);
-    glPopMatrix();
+     glPushMatrix();
+     glTranslated(1.5,4,2);
+     glScaled(1,.3,.1);
+     cube(0.545, 0.271, 0.075);
+     glPopMatrix();
 
-    glPushMatrix();
-    glTranslated(-1,4,2);
-    glScaled(1,.3,.1);
-    cube(0.545, 0.271, 0.075);
-    glPopMatrix();
-
-
-    glPushMatrix();
-    glTranslated(1,5.5,2.57);
-    glScaled(.1,.1,.1);
-    cube(0,0,0);
-    glPopMatrix();
-
-    glPushMatrix();
-    glTranslated(.5,5.5,2.57);
-    glScaled(.1,.1,.1);
-    cube(0,0,0);
-    glPopMatrix();
+     glPushMatrix();
+     glTranslated(-1,4,2);
+     glScaled(1,.3,.1);
+     cube(0.545, 0.271, 0.075);
+     glPopMatrix();
 
 
-    glPopMatrix();*/
+     glPushMatrix();
+     glTranslated(1,5.5,2.57);
+     glScaled(.1,.1,.1);
+     cube(0,0,0);
+     glPopMatrix();
+
+     glPushMatrix();
+     glTranslated(.5,5.5,2.57);
+     glScaled(.1,.1,.1);
+     cube(0,0,0);
+     glPopMatrix();
+
+
+     glPopMatrix();*/
 
 
     ///2nd man
@@ -3177,63 +3836,68 @@ void player()
 
     glPopMatrix();
 
+
     ///4th man
 
-   /* glPushMatrix();
-    glScaled(.8,.5,1);
-    glTranslated(0,0,-3);
-
-    glPushMatrix();
-    glTranslated(0,2.5,2);
-    glScaled(1.5,2,.1);
-    cube(0.545, 0.271, 0.075);
-    glPopMatrix();
-
-    glPushMatrix();
-    glTranslated(0.2,0,2);
-    glScaled(.2,2.5,.1);
-    cube(0.545, 0.271, 0.075);
-    glPopMatrix();
-
-    glPushMatrix();
-    glTranslated(1.1,0,2);
-    glScaled(.2,2.5,.1);
-    cube(0.545, 0.271, 0.075);
-    glPopMatrix();
-
-    glPushMatrix();
-    set_mat_prop(1,1,1,true,60);
-    glTranslated(.8,5.1,2);
-    glutSolidSphere(0.6,20,20);
-    glPopMatrix();
-
-    glPushMatrix();
-    glTranslated(1.5,4,2);
-    glScaled(1,.3,.1);
-    cube(0.545, 0.271, 0.075);
-    glPopMatrix();
-
-    glPushMatrix();
-    glTranslated(-1,4,2);
-    glScaled(1,.3,.1);
-    cube(0.545, 0.271, 0.075);
-    glPopMatrix();
 
 
-    glPushMatrix();
-    glTranslated(1,5.5,2.57);
-    glScaled(.1,.1,.1);
-    cube(0,0,0);
-    glPopMatrix();
+    ///4th man
 
-    glPushMatrix();
-    glTranslated(.5,5.5,2.57);
-    glScaled(.1,.1,.1);
-    cube(0,0,0);
-    glPopMatrix();
+    /* glPushMatrix();
+     glScaled(.8,.5,1);
+     glTranslated(0,0,-3);
+
+     glPushMatrix();
+     glTranslated(0,2.5,2);
+     glScaled(1.5,2,.1);
+     cube(0.545, 0.271, 0.075);
+     glPopMatrix();
+
+     glPushMatrix();
+     glTranslated(0.2,0,2);
+     glScaled(.2,2.5,.1);
+     cube(0.545, 0.271, 0.075);
+     glPopMatrix();
+
+     glPushMatrix();
+     glTranslated(1.1,0,2);
+     glScaled(.2,2.5,.1);
+     cube(0.545, 0.271, 0.075);
+     glPopMatrix();
+
+     glPushMatrix();
+     set_mat_prop(1,1,1,true,60);
+     glTranslated(.8,5.1,2);
+     glutSolidSphere(0.6,20,20);
+     glPopMatrix();
+
+     glPushMatrix();
+     glTranslated(1.5,4,2);
+     glScaled(1,.3,.1);
+     cube(0.545, 0.271, 0.075);
+     glPopMatrix();
+
+     glPushMatrix();
+     glTranslated(-1,4,2);
+     glScaled(1,.3,.1);
+     cube(0.545, 0.271, 0.075);
+     glPopMatrix();
 
 
-    glPopMatrix();*/
+     glPushMatrix();
+     glTranslated(1,5.5,2.57);
+     glScaled(.1,.1,.1);
+     cube(0,0,0);
+     glPopMatrix();
+
+     glPushMatrix();
+     glTranslated(.5,5.5,2.57);
+     glScaled(.1,.1,.1);
+     cube(0,0,0);
+     glPopMatrix();
+
+
+     glPopMatrix();*/
 
 
     ///5th man
@@ -3584,7 +4248,6 @@ static void display(void)
     gallery(16,8);
     goalbar();
     chair();
-    glLightfv(GL_LIGHT0, GL_POSITION, l_pos);
     umbrella();
     build();
     tree();
@@ -3593,6 +4256,33 @@ static void display(void)
     ball();
     wall();
     car();
+    showControlPoints();
+
+
+
+
+
+
+    glLightfv(GL_LIGHT2, GL_AMBIENT,  l_amb2);
+    glLightfv(GL_LIGHT2, GL_DIFFUSE,  l_dif2);
+    glLightfv(GL_LIGHT2, GL_SPECULAR, l_spec2);
+    glLightfv(GL_LIGHT2, GL_POSITION, l_pos2);
+    //glLightfv(GL_LIGHT1, GL_POSITION, light_positions);
+    if(spot_light==true)
+    {
+        glEnable(GL_LIGHT2);
+        GLfloat l_spt[] = {0.0,0,-1,0.0};
+        GLfloat spt_ct[] = {spot_cutoff};
+        glLightfv(GL_LIGHT2, GL_SPOT_DIRECTION, l_spt);
+        glLightfv(GL_LIGHT2, GL_SPOT_CUTOFF, spt_ct);
+    }
+
+    if(l_zero==true)
+    {
+        glEnable(GL_LIGHT0);
+
+    }
+
     glFlush();
     glutSwapBuffers();
 }
@@ -3660,6 +4350,15 @@ static void key(unsigned char key, int x, int y)
         break;
     case 'U':
         flagg10=true;
+        break;
+
+    case 'o':
+        spot_light=true;
+        break;
+
+    case 'O':
+        spot_light=false;
+        glDisable(GL_LIGHT2);
         break;
 
     // moving the look at point at a circular path or up-down
@@ -3772,7 +4471,9 @@ static void key(unsigned char key, int x, int y)
     // Ambient light on-off
     case '0':
 
-        glEnable(GL_LIGHT0);
+
+
+       glEnable(GL_LIGHT0);
 
         glLightfv(GL_LIGHT0, GL_AMBIENT, l_amb);
 
@@ -3781,9 +4482,15 @@ static void key(unsigned char key, int x, int y)
         glLightfv(GL_LIGHT0, GL_SPECULAR, l_spec);
 
         glLightfv(GL_LIGHT0, GL_POSITION, l_pos);
+
         break;
     case '1':
         glDisable(GL_LIGHT0);
+        glLightfv(GL_LIGHT0, GL_AMBIENT, l_no);
+
+
+
+
 
         break;
 
@@ -3910,6 +4617,23 @@ int main(int argc, char *argv[])
     printf("Use 'F' to toggle the fan on-off.\n\n");
     printf("Use '1' and '2' to toggle tube lights switches,\n and '3' to toggle the table lamp switch.\n\n");
     printf("Use 'z' to toggle ambient,\n 'x' to toggle diffusion,\n and 'c' to toggle specular light property for all lights.\n\n\n\n");
+    cout<<"Use 'm' for opening the door"<<endl;
+    cout<<"Use 'M' for closing  the door"<<endl;
+    cout<<"Use 'o' for  spot light"<<endl;
+    cout<<"Use 'O' to stop the   spot light"<<endl;
+    cout<<"Use u for car starting"<<endl;
+    cout<<"Use U for car returning "<<endl;
+    cout<<"Use '0' for light 0"<<endl;
+    cout<<"Use '1' to stop light0"<<endl;
+    cout<<"Use '2' for ambient light0"<<endl;
+    cout<<"Use '3' for diffuse  light0"<<endl;
+    cout<<"Use '4' for specular  light0"<<endl;
+
+    cout<<"Use '5' for light 1"<<endl;
+    cout<<"Use '6' to stop light1"<<endl;
+    cout<<"Use '7' for ambient light1"<<endl;
+    cout<<"Use '8' for diffuse  light1"<<endl;
+    cout<<"Use '9' for specular  light1"<<endl;
 
     glutMainLoop();
 
